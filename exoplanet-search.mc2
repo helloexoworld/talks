@@ -1,30 +1,36 @@
-'60VEPqKkQ5KmAbCWR1taQ6Ks5kL72qKsQr0gNLt_S3tpQL8_RV3m.a_Z1I.kC2JrB2ZoDFFiNM0k3q_jAbSWRb.lB1tXQqxoRrGmNM.GQq8nOM8qNMGdQqtDSLpXOM70BFWYNLpkNLSiOFGfR5lm4V.L.0g..0P.aErve8ni00P.qDiS90Qmv.7a.0W8S..3PTQTIuc.ExYJgr4ZtN.JVCYfbHVzqCSM8t8KRlH.qDiS92zMrABGtyto472NutocExXgnPek5awJVCYfbHVzqC7yfWimP0N93V.' UNWRAP 'exoplanet.model'  STORE
+'60VEPqKkQ5KmAbCWR1taQ6Ks5kT72qKsQr0gNLt_S3tpQL8_RV3l1JgkBINpD1skBF_2Iot5HK8CGJF3Aa4kR0CdQmtrNM8kBI.iNaxjS6CoRa4k15CWQM0WOqt_05hkQ671PLF8B2.oCIRkDIFt3LxXRqKmSa4oPLxiIbKhNaKm.I35RrGWS6Kn1JCEIZO8JZp4G0N.4V.Q...LV8YxyuXRvVFLVCYfbHVLwik18V.NJlyA1..........fNL28E8uzMcM0sNpMg5WcP9W7ksrMRnJRrbVi9JMXiQtcN50VVE6BT39GtAkwg_PhLVrYTURLB2.kkb_mLZ.t.0Tgpjl_....4VsG..' UNWRAP 'exoplanet.model'  STORE
 
 $token AUTHENTICATE
 10000000 MAXOPS
+
+// coeff used to only have the deepest dropouts
+1.0 'coeff' STORE
+
+// max dtw score accepted
+1.3 'max.score.dtw' STORE
 
 [ $token '~.*' {  }  ] FIND 
 //[ SWAP [] { 'status' 'CONFIRMED' } filter.byattr ] FILTER
 
 // get a subset of the 150k stars
-[ 35000 DUP 100 +  ] SUBLIST
+[ 100 DUP 50 +  ] SUBLIST
 
-// coeff used to only have the deepest dropouts
-2.3 'coeff' STORE
 
 // creating regexp for ids
 <% LABELS 'id' GET %> FOREACH '|' DEPTH 1 - JOIN '~(' SWAP ')' '' 3 JOIN 'ids' STORE
 
+// cool id to debug
+'004570949' 'ids' STORE
+
 // fetch the datapoints
-[ $token 'kepler.sap.flux' { 'id' $ids } NOW NOW ] FETCH 
+[ $token 'kepler.sap.flux' { 'id' $ids } NOW NOW ] FETCH
 
 [] 'star.result' STORE
 <%
     'star' STORE
     
     // if the star has a confirmed planet, adding it as a label
-    $star ATTRIBUTES 'status' GET
-    <% ISNULL ! %> <% $star { 'status' $star ATTRIBUTES 'status' GET } RELABEL 'star' STORE %> IFT 
+    $star DUP ATTRIBUTES  RELABEL 'star' STORE 
     
     // downsampling and splitting the observations
     [ $star  bucketizer.mean 0 90 m 0 ] BUCKETIZE 0 GET 
@@ -33,12 +39,13 @@ $token AUTHENTICATE
     [] 'exoplanet.result' STORE
     
     <%
+        
         'observation' STORE
         
         // calculating standard deviation on a sliding window
         [ $observation true mapper.sd 3 3 0 ] MAP 0 GET
         
-        DUP TRUE MUSIGMA 0.9 * + 'value' STORE
+        DUP TRUE MUSIGMA + 'value' STORE
         [ SWAP $value mapper.gt 0 0 0 ] MAP NONEMPTY
         DUP <% SIZE 0 == %> <% DROP CONTINUE %> IFT
         
@@ -57,28 +64,47 @@ $token AUTHENTICATE
             $exoplanet TICKLIST 0 GET <% $outlier == %> <% CONTINUE %> IFT
             $exoplanet TICKLIST DUP SIZE 1 - GET <% $outlier == %> <% CONTINUE %> IFT
             NEWGTS 'outlier' RENAME  
-            $outlier NaN NaN NaN $exoplanet $outlier ATTICK 4 GET  ADDVALUE 
+            $outlier NaN NaN NaN $exoplanet $outlier ATTICK 4 GET ADDVALUE 
             [ SWAP bucketizer.min 0 0 1 ] BUCKETIZE 0 GET  VALUES 0 GET 'outlier.min' STORE
-            $exoplanet TRUE MUSIGMA  $coeff * - <% $outlier.min <= %> <% CONTINUE %> IFT
+            $exoplanet TRUE MUSIGMA $coeff * - <% $outlier.min <= %> <% CONTINUE %> IFT
             <% $outlier.min $min != %> <% CONTINUE %> IFT
             
             // checking DTW
-            $exoplanet $exoplanet.model 0.0 DTW  
-            DUP <% 2 >= %> <% DROP CONTINUE %> IFT
+            $exoplanet NORMALIZE $exoplanet.model NORMALIZE 0.0 DTW  
+            DUP <% $max.score.dtw >= %> <% DROP CONTINUE %> IFT
             $exoplanet [ SWAP T mapper.replace 0 0 0 ] MAP
             SWAP { SWAP 'score' SWAP TOSTRING } RELABEL
+        
+            // Creating GTS with transit time
+            NEWGTS 'kepler.transit.diff' RENAME $exoplanet LABELS RELABEL $outlier NaN NaN NaN $exoplanet TRUE MUSIGMA + $outlier.min - ADDVALUE
+            2 ->LIST FLATTEN
             
         %> FOREACH 
         
         DEPTH ->LIST FLATTEN
         DUP <% SIZE 0 == %> <% DROP CONTINUE %> IFT
-        [ SWAP [] reducer.or.exclude-nulls ] REDUCE 0 GET 'kepler.exoplanet.detection' RENAME 
-        $observation 2 ->LIST [ SWAP ] $exoplanet.result APPEND 'exoplanet.result' STORE
-
+        DUP 
+        [ SWAP [] 'kepler.sap.flux' filter.byclass ] FILTER
+        [ SWAP [] reducer.or.exclude-nulls ] REDUCE 0 GET 'kepler.exoplanet.detection' RENAME
+        SWAP 
+        [ SWAP [] 'kepler.transit.diff' filter.byclass ] FILTER
+        [ SWAP [] reducer.sum ] REDUCE 0 GET
+        
+         $observation 3 ->LIST [ SWAP ] $exoplanet.result APPEND 'exoplanet.result' STORE
     %> FOREACH
 
     $exoplanet.result
     DUP <% SIZE 0 == %> <% DROP CONTINUE %> IFT
+    
+    DUP FLATTEN [ SWAP [] 'kepler.transit.diff' filter.byclass ] FILTER
+    [ SWAP [] reducer.sum ] REDUCE 0 GET
+    SWAP 
+    <%
+        DUP [ SWAP [] 'kepler.sap.flux' filter.byclass ] FILTER 0 GET 
+        SWAP [ SWAP [] 'kepler.exoplanet.detection' filter.byclass ] FILTER 0 GET
+        2 ->LIST
+    %> FOREACH
+    DEPTH ->LIST
     [ SWAP ] $star.result APPEND  'star.result' STORE
 %> FOREACH
 $star.result
