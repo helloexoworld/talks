@@ -20,7 +20,7 @@ $token AUTHENTICATE
 
 [] 'star.result' STORE
 <%
-    NORMALIZE 'star' STORE
+    'star' STORE
     
     // if the star has a confirmed planet, adding it as a label
     $star ATTRIBUTES 'status' GET
