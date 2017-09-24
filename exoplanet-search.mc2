@@ -1,0 +1,84 @@
+'60VEPqKkQ5KmAbCWR1taQ6Ks5kL72qKsQr0gNLt_S3tpQL8_RV3m.a_Z1I.kC2JrB2ZoDFFiNM0k3q_jAbSWRb.lB1tXQqxoRrGmNM.GQq8nOM8qNMGdQqtDSLpXOM70BFWYNLpkNLSiOFGfR5lm4V.L.0g..0P.aErve8ni00P.qDiS90Qmv.7a.0W8S..3PTQTIuc.ExYJgr4ZtN.JVCYfbHVzqCSM8t8KRlH.qDiS92zMrABGtyto472NutocExXgnPek5awJVCYfbHVzqC7yfWimP0N93V.' UNWRAP 'exoplanet.model'  STORE
+
+$token AUTHENTICATE
+10000000 MAXOPS
+
+[ $token '~.*' {  }  ] FIND 
+//[ SWAP [] { 'status' 'CONFIRMED' } filter.byattr ] FILTER
+
+// get a subset of the 150k stars
+[ 35000 DUP 100 +  ] SUBLIST
+
+// coeff used to only have the deepest dropouts
+2.3 'coeff' STORE
+
+// creating regexp for ids
+<% LABELS 'id' GET %> FOREACH '|' DEPTH 1 - JOIN '~(' SWAP ')' '' 3 JOIN 'ids' STORE
+
+// fetch the datapoints
+[ $token 'kepler.sap.flux' { 'id' $ids } NOW NOW ] FETCH 
+
+[] 'star.result' STORE
+<%
+    NORMALIZE 'star' STORE
+    
+    // if the star has a confirmed planet, adding it as a label
+    $star ATTRIBUTES 'status' GET
+    <% ISNULL ! %> <% $star { 'status' $star ATTRIBUTES 'status' GET } RELABEL 'star' STORE %> IFT 
+    
+    // downsampling and splitting the observations
+    [ $star  bucketizer.mean 0 90 m 0 ] BUCKETIZE 0 GET 
+    2 h 10 'observationNumber' TIMESPLIT 'observations' STORE 
+    $observations
+    [] 'exoplanet.result' STORE
+    
+    <%
+        'observation' STORE
+        
+        // calculating standard deviation on a sliding window
+        [ $observation true mapper.sd 3 3 0 ] MAP 0 GET
+        
+        DUP TRUE MUSIGMA 0.9 * + 'value' STORE
+        [ SWAP $value mapper.gt 0 0 0 ] MAP NONEMPTY
+        DUP <% SIZE 0 == %> <% DROP CONTINUE %> IFT
+        
+        // generating mask according
+        [ SWAP T mapper.replace 0 0 0 ] MAP 'annotation' RENAME 0 GET 'mask' STORE 
+        [ [ $mask ]  [ $observation ] [] op.mask ] APPLY 0 GET 
+        2 h 2 'exoplanetNumber' TIMESPLIT 
+        <%
+            'exoplanet' STORE
+            
+            // checking that outlier is the min
+            [ $exoplanet bucketizer.min 0 0 1 ] BUCKETIZE 0 GET VALUES 0 GET 'min' STORE
+            $exoplanet 1 T ESDTEST
+            <% DUP SIZE 0 == %> <% DROP CONTINUE %> IFT
+            0 GET 'outlier' STORE
+            $exoplanet TICKLIST 0 GET <% $outlier == %> <% CONTINUE %> IFT
+            $exoplanet TICKLIST DUP SIZE 1 - GET <% $outlier == %> <% CONTINUE %> IFT
+            NEWGTS 'outlier' RENAME  
+            $outlier NaN NaN NaN $exoplanet $outlier ATTICK 4 GET  ADDVALUE 
+            [ SWAP bucketizer.min 0 0 1 ] BUCKETIZE 0 GET  VALUES 0 GET 'outlier.min' STORE
+            $exoplanet TRUE MUSIGMA  $coeff * - <% $outlier.min <= %> <% CONTINUE %> IFT
+            <% $outlier.min $min != %> <% CONTINUE %> IFT
+            
+            // checking DTW
+            $exoplanet $exoplanet.model 0.0 DTW  
+            DUP <% 2 >= %> <% DROP CONTINUE %> IFT
+            $exoplanet [ SWAP T mapper.replace 0 0 0 ] MAP
+            SWAP { SWAP 'score' SWAP TOSTRING } RELABEL
+            
+        %> FOREACH 
+        
+        DEPTH ->LIST FLATTEN
+        DUP <% SIZE 0 == %> <% DROP CONTINUE %> IFT
+        [ SWAP [] reducer.or.exclude-nulls ] REDUCE 0 GET 'kepler.exoplanet.detection' RENAME 
+        $observation 2 ->LIST [ SWAP ] $exoplanet.result APPEND 'exoplanet.result' STORE
+
+    %> FOREACH
+
+    $exoplanet.result
+    DUP <% SIZE 0 == %> <% DROP CONTINUE %> IFT
+    [ SWAP ] $star.result APPEND  'star.result' STORE
+%> FOREACH
+$star.result
