@@ -1,6 +1,7 @@
 '60VEPqKkQ5KmAbCWR1taQ6Ks5kT72qKsQr0gNLt_S3tpQL8_RV3l1JgkBINpD1skBF_2Iot5HK8CGJF3Aa4kR0CdQmtrNM8kBI.iNaxjS6CoRa4k15CWQM0WOqt_05hkQ671PLF8B2.oCIRkDIFt3LxXRqKmSa4oPLxiIbKhNaKm.I35RrGWS6Kn1JCEIZO8JZp4G0N.4V.Q...LV8YxyuXRvVFLVCYfbHVLwik18V.NJlyA1..........fNL28E8uzMcM0sNpMg5WcP9W7ksrMRnJRrbVi9JMXiQtcN50VVE6BT39GtAkwg_PhLVrYTURLB2.kkb_mLZ.t.0Tgpjl_....4VsG..' UNWRAP 'exoplanet.model'  STORE
 
 $token AUTHENTICATE
+1000000000 LIMIT
 10000000 MAXOPS
 
 // coeff used to only have the deepest dropouts
@@ -10,13 +11,13 @@ $token AUTHENTICATE
 1.3 'max.score.dtw' STORE
 
 // minimum number of anomaly per star needed
-3 'min.number.anomaly' STORE
+10 'min.number.anomaly' STORE
 
 [ $token '~.*' {  }  ] FIND 
 //[ SWAP [] { 'status' 'CONFIRMED' } filter.byattr ] FILTER
 
 // get a subset of the 150k stars
-[ 87000 DUP 40 +  ] SUBLIST
+[ 50923 DUP 100 +  ] SUBLIST
 
 
 // creating regexp for ids
@@ -44,6 +45,9 @@ $token AUTHENTICATE
     <%
         
         'observation' STORE
+        
+        $observation VALUES  <% SIZE 20 <= %> <% CONTINUE %> IFT
+        
         
         // calculating standard deviation on a sliding window
         [ $observation true mapper.sd 5 5 0 ] MAP 0 GET
