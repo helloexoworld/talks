@@ -2,7 +2,7 @@
 
 $token AUTHENTICATE
 1000000000 LIMIT
-10000000 MAXOPS
+20000000 MAXOPS
 
 // coeff used to only have the deepest dropouts
 2.2 'coeff' STORE
@@ -17,11 +17,17 @@ $token AUTHENTICATE
 //[ SWAP [] { 'status' 'CONFIRMED' } filter.byattr ] FILTER
 
 // get a subset of the 150k stars
-[ 9876 DUP 1000 +  ] SUBLIST
+[ 99123 DUP 1000 +  ] SUBLIST
+
+//CLEAR NEWGTS { 'id' '011709823' } RELABEL 1 ->LIST
 
 [] 'star.result' STORE
 <%
+    
     LABELS 'id' GET 'id' STORE
+    
+    'id-' $id + SECTION
+    
     [ $token 'kepler.sap.flux' { 'id' $id } NOW NOW ] FETCH 
     DUP <% SIZE 0 == %> <% DROP CONTINUE %> IFT
     0 GET 'star' STORE
@@ -31,33 +37,34 @@ $token AUTHENTICATE
     
     $star ATTRIBUTES KEYLIST SIZE <% 0 > %> <% CONTINUE %> IFT
     
-    
     // downsampling and splitting the observations
     [ $star  bucketizer.mean 0 90 m 0 ] BUCKETIZE 0 GET 
     2 h 10 'observationNumber' TIMESPLIT 'observations' STORE 
-    $observations
+    $observations 
     [] 'exoplanet.result' STORE
     
     <%
-        
         'observation' STORE
-        
+        $observation LABELS 'observationNumber' GET 'observationNumber-' SWAP + SECTION
         $observation VALUES  <% SIZE 20 <= %> <% CONTINUE %> IFT
         
         
         // calculating standard deviation on a sliding window
         [ $observation true mapper.sd 5 5 0 ] MAP 0 GET
         
-        DUP TRUE MUSIGMA + 'value' STORE
+        DUP TRUE MUSIGMA +  'value' STORE
         [ SWAP $value mapper.gt 0 0 0 ] MAP NONEMPTY
         DUP <% SIZE 0 == %> <% DROP CONTINUE %> IFT
         
         // generating mask according
         [ SWAP T mapper.replace 0 0 0 ] MAP 'annotation' RENAME 0 GET 'mask' STORE 
         [ [ $mask ]  [ $observation ] [] op.mask ] APPLY 0 GET 
+        DUP <% SIZE 0 == %> <% DROP CONTINUE %> IFT
         2 h 2 'exoplanetNumber' TIMESPLIT 
         <%
             'exoplanet' STORE
+            
+            $exoplanet LABELS 'exoplanetNumber' GET 'exoplanetNumber-' SWAP + SECTION
             
             // checking that outlier is the min
             [ $exoplanet bucketizer.min 0 0 1 ] BUCKETIZE 0 GET VALUES 
