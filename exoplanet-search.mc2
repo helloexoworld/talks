@@ -8,7 +8,7 @@ $token AUTHENTICATE
 2.2 'coeff' STORE
 
 // max dtw score accepted
-1.3 'max.score.dtw' STORE
+2.5 'max.score.dtw' STORE
 
 // minimum number of anomaly per star needed
 10 'min.number.anomaly' STORE
@@ -17,24 +17,20 @@ $token AUTHENTICATE
 //[ SWAP [] { 'status' 'CONFIRMED' } filter.byattr ] FILTER
 
 // get a subset of the 150k stars
-[ 50923 DUP 100 +  ] SUBLIST
-
-
-// creating regexp for ids
-<% LABELS 'id' GET %> FOREACH '|' DEPTH 1 - JOIN '~(' SWAP ')' '' 3 JOIN 'ids' STORE
-
-// cool id to debug
-//'004570949' 'ids' STORE
-
-// fetch the datapoints
-[ $token 'kepler.sap.flux' { 'id' $ids } NOW NOW ] FETCH
+[ 9876 DUP 1000 +  ] SUBLIST
 
 [] 'star.result' STORE
 <%
-    'star' STORE
+    LABELS 'id' GET 'id' STORE
+    [ $token 'kepler.sap.flux' { 'id' $id } NOW NOW ] FETCH 
+    DUP <% SIZE 0 == %> <% DROP CONTINUE %> IFT
+    0 GET 'star' STORE
     
     // if the star has a confirmed planet, adding it as a label
-    $star DUP ATTRIBUTES  RELABEL 'star' STORE 
+    //$star DUP ATTRIBUTES  RELABEL 'star' STORE 
+    
+    $star ATTRIBUTES KEYLIST SIZE <% 0 > %> <% CONTINUE %> IFT
+    
     
     // downsampling and splitting the observations
     [ $star  bucketizer.mean 0 90 m 0 ] BUCKETIZE 0 GET 
