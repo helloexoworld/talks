@@ -1,8 +1,8 @@
 '60VEPqKkQ5KmAbCWR1taQ6Ks5kT72qKsQr0gNLt_S3tpQL8_RV3l1JgkBINpD1skBF_2Iot5HK8CGJF3Aa4kR0CdQmtrNM8kBI.iNaxjS6CoRa4k15CWQM0WOqt_05hkQ671PLF8B2.oCIRkDIFt3LxXRqKmSa4oPLxiIbKhNaKm.I35RrGWS6Kn1JCEIZO8JZp4G0N.4V.Q...LV8YxyuXRvVFLVCYfbHVLwik18V.NJlyA1..........fNL28E8uzMcM0sNpMg5WcP9W7ksrMRnJRrbVi9JMXiQtcN50VVE6BT39GtAkwg_PhLVrYTURLB2.kkb_mLZ.t.0Tgpjl_....4VsG..' UNWRAP 'exoplanet.model'  STORE
 
 $token AUTHENTICATE
-1000000000 LIMIT
-20000000 MAXOPS
+100000000000 LIMIT
+2000000000 MAXOPS
 
 // coeff used to only have the deepest dropouts
 2.2 'coeff' STORE
@@ -17,9 +17,9 @@ $token AUTHENTICATE
 //[ SWAP [] { 'status' 'CONFIRMED' } filter.byattr ] FILTER
 
 // get a subset of the 150k stars
-[ 99123 DUP 1 +  ] SUBLIST
+[ 99123 DUP 5000 +  ] SUBLIST
 
-//CLEAR NEWGTS { 'id' '011709823' } RELABEL 1 ->LIST
+//CLEAR NEWGTS { 'id' '007221117' } RELABEL 1 ->LIST
 
 [] 'star.result' STORE
 <%
@@ -40,17 +40,20 @@ $token AUTHENTICATE
     2 h 10 'observationNumber' TIMESPLIT 'observations' STORE 
     $observations 
     [] 'exoplanet.result' STORE
-    
+
     <%
         'observation' STORE
         $observation LABELS 'observationNumber' GET 'observationNumber-' SWAP + SECTION
-        $observation VALUES  <% SIZE 20 <= %> <% CONTINUE %> IFT
-        
-        
+       
         // calculating standard deviation on a sliding window
         [ $observation true mapper.sd 5 5 0 ] MAP 0 GET
         
-        DUP TRUE MUSIGMA +  'value' STORE
+        // getting rid of 0 values and NaN
+        [ SWAP 0.0 mapper.gt 0 0 0 ] MAP 0 GET
+        
+        DUP VALUES <% SIZE 5 <= %> <% DROP CONTINUE %> IFT
+        
+        DUP TRUE MUSIGMA  + 'value' STORE
         [ SWAP $value mapper.gt 0 0 0 ] MAP NONEMPTY
         DUP <% SIZE 0 == %> <% DROP CONTINUE %> IFT
         
@@ -74,7 +77,7 @@ $token AUTHENTICATE
             $exoplanet TICKLIST DUP SIZE 1 - GET <% $outlier == %> <% CONTINUE %> IFT
             NEWGTS 'outlier' RENAME  
             $outlier NaN NaN NaN $exoplanet $outlier ATTICK 4 GET ADDVALUE 
-            [ SWAP bucketizer.min 0 0 1 ] BUCKETIZE 0 GET  VALUES 0 GET 'outlier.min' STORE
+            [ SWAP bucketizer.min 0 0 1 ] BUCKETIZE 0 GET VALUES 0 GET 'outlier.min' STORE
             $exoplanet TRUE MUSIGMA $coeff * - <% $outlier.min <= %> <% CONTINUE %> IFT
             <% $outlier.min $min != %> <% CONTINUE %> IFT
             
