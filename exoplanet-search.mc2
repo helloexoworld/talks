@@ -17,7 +17,7 @@ $token AUTHENTICATE
 //[ SWAP [] { 'status' 'CONFIRMED' } filter.byattr ] FILTER
 
 // get a subset of the 150k stars
-[ 99123 DUP 1000 +  ] SUBLIST
+[ 99123 DUP 1 +  ] SUBLIST
 
 //CLEAR NEWGTS { 'id' '011709823' } RELABEL 1 ->LIST
 
@@ -32,9 +32,7 @@ $token AUTHENTICATE
     DUP <% SIZE 0 == %> <% DROP CONTINUE %> IFT
     0 GET 'star' STORE
     
-    // if the star has a confirmed planet, adding it as a label
-    //$star DUP ATTRIBUTES  RELABEL 'star' STORE 
-    
+    // if the star has a confirmed planet, moving on
     $star ATTRIBUTES KEYLIST SIZE <% 0 > %> <% CONTINUE %> IFT
     
     // downsampling and splitting the observations
@@ -56,14 +54,13 @@ $token AUTHENTICATE
         [ SWAP $value mapper.gt 0 0 0 ] MAP NONEMPTY
         DUP <% SIZE 0 == %> <% DROP CONTINUE %> IFT
         
-        // generating mask according
+        // generating mask according to previous detection
         [ SWAP T mapper.replace 0 0 0 ] MAP 'annotation' RENAME 0 GET 'mask' STORE 
         [ [ $mask ]  [ $observation ] [] op.mask ] APPLY 0 GET 
         DUP <% SIZE 0 == %> <% DROP CONTINUE %> IFT
         2 h 2 'exoplanetNumber' TIMESPLIT 
         <%
             'exoplanet' STORE
-            
             $exoplanet LABELS 'exoplanetNumber' GET 'exoplanetNumber-' SWAP + SECTION
             
             // checking that outlier is the min
@@ -93,6 +90,7 @@ $token AUTHENTICATE
             
         %> FOREACH 
         
+        // cleqn output
         DEPTH ->LIST FLATTEN
         DUP <% SIZE 0 == %> <% DROP CONTINUE %> IFT
         DUP 
