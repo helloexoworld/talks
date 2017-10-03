@@ -1,32 +1,56 @@
-// runtime parameters
-$token AUTHENTICATE
-100000000000 LIMIT
-2000000000 MAXOPS
+'60VEPqKkQ5KmAbCWR1taQ6Ks5kX701tWR6.IPLwiSq4mR23kAa8jQrGnS68WR.WYNLpkNLSiOFGfR5lm1JgkBIFmCXskBV_2Iot5HK8CGJF8Hn.lC27qAY.n1JC0IZG8G34JGF8dO.ZkBI3lBY7sDIFGQq8nOM8qNMGdQqtDSLpXOM71CIJ5RrGWS6Kn1JCEIZO8JZp4G._AB23oBYNiB238FoxDGZ_HIJK34V.L.0g3X._AB23oBYNiB278FoxDGZ_HIJK31JgkBIFmCXskBk_2FJt3HJG0K3J5RrGWS6Kn1JCEIZO8JZp4G._AB23oBYNiB238FoxDGZ_HIJK3.0P.whbmVdni00P.YOuI2GPer.Va.0X4.WyA1..........fNL1t9GHaRSU0sRPfokoB2.kX2KBjIObCsb2YxRMvzzzz4qbcbITOpy65ask47BbzJu1H2Fz.PX5HflBHZ6WjjN.w8WYjlRw58AZrMRYuMVNm7EBLmHCOyDcHBixCM2kHvwLj0JYuEVVf7E4Tx1EAjJw0Pjg6SySGOATwnJIajOO3SgiQ5e.dY6.tljj7dVFYyy6SnkC79dyZ77U3IISZreK_m2uu_ia.ABT.QDPKIVNZBmwr7fjguWKZ_FzAZ6rvohJ0HSwQRyGsTBB1JI_fnn7dcCySJTAj_YmHzxtecUVj0IaJMZp5SgifYHWlukXm6F0cqV.dJF7..0OJ3F.' UNWRAP 'exoplanet.model' STORE
 
 1765000000 'bucketspan' STORE
 
-//[ $token '~.*' {  }  ] FIND [ SWAP [] { 'status' 'CONFIRMED' } filter.byattr ] FILTER [ 987 DUP ] SUBLIST STOP
+// 011122894
+[ $token '~.*' { 'campagne' 'kplr' }  ] FIND 
+[ SWAP [] { 'status' 'CONFIRMED' } filter.byattr ] FILTER
 
-// fetching a star
-[ $token '~.*' { 'id' '011122894' } NOW NOW ] FETCH 
+[ 0 4 ] SUBLIST
+
+//NEWGTS { 'id' '011122894' } RELABEL 1 ->LIST
 
 // looping through the star
 <%
-    // display the attributes as labels
-    DUP ATTRIBUTES RELABEL
+    
+    LABELS 'id' GET 'id' STORE
+
+    [ $token 'kepler.sap.flux' { 'id' $id } NOW NOW ] FETCH 0 GET
+    
+    'star' STORE
+    
+    MARK
     
     // downsampling
-    [ SWAP  bucketizer.mean 0 $bucketspan 0 ] BUCKETIZE 0 GET 
+    [ $star bucketizer.mean 0 $bucketspan 0 ] BUCKETIZE 0 GET 
     
     // split the star into multiple observations if there's 2 h without datapoints
-    2 h 10 'observationNumber' TIMESPLIT 
-    
+    2 h 10 'observationNumber' TIMESPLIT
     // looping through the observations 
     <%
         'observation' STORE
-        [ $observation mapper.min 2 2 0 ] MAP 0 GET 'kepler.sap.flux.min' RENAME 'observation.min' STORE
-        [ $observation.min TRUE mapper.sd 5 5 0 ] MAP 0 GET 'kepler.sap.flux.min.sd' RENAME 'observation.min.sd' STORE
-        [ $observation NORMALIZE $observation.min NORMALIZE $observation.min.sd NORMALIZE ] 
+        
+        
+        $observation 32 4 8 10 true 0.0 ZDISCORDS
+        1 d 10 'discordNumber' TIMESPLIT
+         <%
+            
+            'discord' STORE
+            
+            // checking that min is the outlier
+            [ $discord bucketizer.min 0 0 1 ] BUCKETIZE 0 GET VALUES 
+             <% DUP SIZE 0 == %> <% CONTINUE %> IFT
+             0 GET 'min' STORE
+            $discord 1 T ESDTEST 
+            <% DUP SIZE 0 == %> <%  DROP CONTINUE %> IFT
+            0 GET 'outlier' STORE
+            $discord $outlier ATTICK 4 GET  <% $min != %> <% CONTINUE %> IFT
+            
+            // Checking DTW
+            $discord $exoplanet.model 0.0 DTW
+            <% 3.0 > %> <% CONTINUE %> IFT
+            $discord 'kepler.sap.flux.detection' RENAME 
+         %> FOREACH
     %> FOREACH
-
+    COUNTTOMARK ->LIST
 %> FOREACH
