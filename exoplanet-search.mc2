@@ -6,35 +6,30 @@
 [ $token '~.*' { 'campagne' 'kplr' }  ] FIND 
 [ SWAP [] { 'status' 'CONFIRMED' } filter.byattr ] FILTER
 
-[ 0 4 ] SUBLIST
+[ 800 DUP 3 + ] SUBLIST
 
 //NEWGTS { 'id' '011122894' } RELABEL 1 ->LIST
 
 // looping through the star
 <%
-    
     LABELS 'id' GET 'id' STORE
-
-    [ $token 'kepler.sap.flux' { 'id' $id } NOW NOW ] FETCH 0 GET
-    
-    'star' STORE
+    [ $token 'kepler.sap.flux' { 'id' $id } NOW NOW ] FETCH 0 GET 'star' STORE
     
     MARK
     
     // downsampling
-    [ $star bucketizer.mean 0 $bucketspan 0 ] BUCKETIZE 0 GET 
+    [ $star bucketizer.mean 0 $bucketspan 0 ] BUCKETIZE 
+    [ SWAP mapper.min 2 2 0 ] MAP 0 GET 
     
     // split the star into multiple observations if there's 2 h without datapoints
     2 h 10 'observationNumber' TIMESPLIT
     // looping through the observations 
     <%
         'observation' STORE
-        
-        
+        MARK
         $observation 32 4 8 10 true 0.0 ZDISCORDS
         1 d 10 'discordNumber' TIMESPLIT
          <%
-            
             'discord' STORE
             
             // checking that min is the outlier
@@ -46,11 +41,19 @@
             0 GET 'outlier' STORE
             $discord $outlier ATTICK 4 GET  <% $min != %> <% CONTINUE %> IFT
             
+            // checking that outlier is not the first or last tick
+            $discord FIRSTTICK <% $outlier == %> <% CONTINUE %> IFT
+            $discord LASTTICK <% $outlier == %> <% CONTINUE %> IFT
+            
             // Checking DTW
             $discord $exoplanet.model 0.0 DTW
             <% 3.0 > %> <% CONTINUE %> IFT
-            $discord 'kepler.sap.flux.detection' RENAME 
+            $discord 'kepler.sap.flux.detection' RENAME
          %> FOREACH
+         $observation
+         COUNTTOMARK ->LIST SWAP DROP
+        <% DUP SIZE 1 == %> <%  DROP CONTINUE %> IFT
     %> FOREACH
-    COUNTTOMARK ->LIST
+    COUNTTOMARK ->LIST SWAP DROP
+    <% DUP SIZE 0 == %> <%  DROP CONTINUE %> IFT
 %> FOREACH
