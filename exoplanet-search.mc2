@@ -2,13 +2,11 @@
 
 1765000000 'bucketspan' STORE
 
-// 011122894
-[ $token '~.*' { 'campagne' 'kplr' }  ] FIND 
-[ SWAP [] { 'status' 'CONFIRMED' } filter.byattr ] FILTER
-
-[ 800 DUP 3 + ] SUBLIST
-
-//NEWGTS { 'id' '011122894' } RELABEL 1 ->LIST
+// find all
+//[ $token '~.*' { 'campagne' 'kplr' }  ] FIND [ SWAP [] { 'status' 'CONFIRMED' } filter.byattr ] FILTER [ 800 DUP 3 + ] SUBLIST
+// or test 
+NEWGTS { 'id' '006541920' } RELABEL NEWGTS { 'id' '011804465' } RELABEL NEWGTS { 'id' '006850504' } RELABEL NEWGTS { 'id' '211089792' } RELABEL
+DEPTH ->LIST
 
 // looping through the star
 <%
