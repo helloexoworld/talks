@@ -5,7 +5,7 @@
 // find all
 //[ $token '~.*' { 'campagne' 'kplr' }  ] FIND [ SWAP [] { 'status' 'CONFIRMED' } filter.byattr ] FILTER [ 800 DUP 3 + ] SUBLIST
 // or test 
-NEWGTS { 'id' '006541920' } RELABEL NEWGTS { 'id' '011804465' } RELABEL NEWGTS { 'id' '006850504' } RELABEL NEWGTS { 'id' '211089792' } RELABEL
+ NEWGTS { 'id' '006541920' } RELABEL
 DEPTH ->LIST
 
 // looping through the star
@@ -17,41 +17,88 @@ DEPTH ->LIST
     
     // downsampling
     [ $star bucketizer.mean 0 $bucketspan 0 ] BUCKETIZE 
-    [ SWAP mapper.min 2 2 0 ] MAP 0 GET 
+    //[ SWAP mapper.min 2 2 0 ] MAP 0 GET 
     
     // split the star into multiple observations if there's 2 h without datapoints
     2 h 10 'observationNumber' TIMESPLIT
-    // looping through the observations 
+    FLATTEN
+    
     <%
-        'observation' STORE
-        MARK
-        $observation 32 4 8 10 true 0.0 ZDISCORDS
-        1 d 10 'discordNumber' TIMESPLIT
-         <%
-            'discord' STORE
-            
-            // checking that min is the outlier
-            [ $discord bucketizer.min 0 0 1 ] BUCKETIZE 0 GET VALUES 
-             <% DUP SIZE 0 == %> <% CONTINUE %> IFT
-             0 GET 'min' STORE
-            $discord 1 T ESDTEST 
-            <% DUP SIZE 0 == %> <%  DROP CONTINUE %> IFT
-            0 GET 'outlier' STORE
-            $discord $outlier ATTICK 4 GET  <% $min != %> <% CONTINUE %> IFT
-            
-            // checking that outlier is not the first or last tick
-            $discord FIRSTTICK <% $outlier == %> <% CONTINUE %> IFT
-            $discord LASTTICK <% $outlier == %> <% CONTINUE %> IFT
-            
-            // Checking DTW
-            $discord $exoplanet.model 0.0 DTW
-            <% 3.0 > %> <% CONTINUE %> IFT
-            $discord 'kepler.sap.flux.detection' RENAME
-         %> FOREACH
-         $observation
-         COUNTTOMARK ->LIST SWAP DROP
-        <% DUP SIZE 1 == %> <%  DROP CONTINUE %> IFT
-    %> FOREACH
-    COUNTTOMARK ->LIST SWAP DROP
-    <% DUP SIZE 0 == %> <%  DROP CONTINUE %> IFT
+        DROP
+        
+        // Store current GTS
+        'myGTS' STORE
+        
+        // Get it's name
+        $myGTS NAME 'getName' STORE
+        
+        // Compute a large GTS
+        [ $myGTS bucketizer.mean 0 1 d 0 ] BUCKETIZE
+        UNBUCKETIZE
+        
+        // Reduce it to initial time span and interpolate intermediary values
+        [ SWAP bucketizer.mean 0 $bucketspan 0 ] BUCKETIZE INTERPOLATE
+        'reducedSeries' STORE
+        
+        // Apply a substraction between initial series and previous result
+        [ 
+          [ $myGTS bucketizer.mean 0 $bucketspan 0 ] BUCKETIZE INTERPOLATE
+          $reducedSeries
+          []
+          op.sub
+        ]
+        APPLY
+        
+        // Get substraction result mean and sigma values
+        0 GET 'subSeries' STORE 
+        $subSeries
+        true
+        MUSIGMA
+        
+        'sigma' STORE
+        'mean' STORE
+        
+        // Keep only point below a specific threshold: -1* (|mean| + sigma) 
+        [ $subSeries $mean ABS $sigma + -1 * mapper.le 0 0 0 ] MAP
+        
+        // Separate result series per quiesce periods of 4 h
+        4 h
+        3
+        'split'
+        TIMESPLIT
+        FLATTEN
+        
+        // Then create a list of tick to start and end
+        <%
+            DROP 
+            UNBUCKETIZE
+            'series' STORE
+            [ $series FIRSTTICK 1 h - $series LASTTICK 1 h + ]
+        %>
+        LMAP
+        
+        'clips' STORE
+        
+        // Clip initial series with it
+        $myGTS
+        $clips
+        CLIP
+        $getName '.transit' + RENAME
+        
+        // validate transit with DTW
+        MARK SWAP 
+        <%
+            'transit' STORE
+            $transit $exoplanet.model 0.0 DTW
+            <% 8.0 > %> <% CONTINUE %> IFT
+            $transit 
+        %> FOREACH
+        
+        COUNTTOMARK ->LIST SWAP DROP FLATTEN
+        
+        // Add initial series to result list
+        $myGTS $getName RENAME
+        +
+    %>
+    LMAP
 %> FOREACH
