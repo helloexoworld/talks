@@ -1,5 +1,3 @@
-'60VEPqKkQ5KmAbCWR1taQ6Ks5kX701tWR6.IPLwiSq4mR23kAa8jQrGnS68WR.WYNLpkNLSiOFGfR5lm1JgkBIFmCXskBV_2Iot5HK8CGJF8Hn.lC27qAY.n1JC0IZG8G34JGF8dO.ZkBI3lBY7sDIFGQq8nOM8qNMGdQqtDSLpXOM71CIJ5RrGWS6Kn1JCEIZO8JZp4G._AB23oBYNiB238FoxDGZ_HIJK34V.L.0g3X._AB23oBYNiB278FoxDGZ_HIJK31JgkBIFmCXskBk_2FJt3HJG0K3J5RrGWS6Kn1JCEIZO8JZp4G._AB23oBYNiB238FoxDGZ_HIJK3.0P.whbmVdni00P.YOuI2GPer.Va.0X4.WyA1..........fNL1t9GHaRSU0sRPfokoB2.kX2KBjIObCsb2YxRMvzzzz4qbcbITOpy65ask47BbzJu1H2Fz.PX5HflBHZ6WjjN.w8WYjlRw58AZrMRYuMVNm7EBLmHCOyDcHBixCM2kHvwLj0JYuEVVf7E4Tx1EAjJw0Pjg6SySGOATwnJIajOO3SgiQ5e.dY6.tljj7dVFYyy6SnkC79dyZ77U3IISZreK_m2uu_ia.ABT.QDPKIVNZBmwr7fjguWKZ_FzAZ6rvohJ0HSwQRyGsTBB1JI_fnn7dcCySJTAj_YmHzxtecUVj0IaJMZp5SgifYHWlukXm6F0cqV.dJF7..0OJ3F.' UNWRAP 'exoplanet.model' STORE
-
 1765000000 'bucketspan' STORE
 
 // find all
@@ -22,6 +20,8 @@ DEPTH ->LIST
     // split the star into multiple observations if there's 2 h without datapoints
     2 h 10 'observationNumber' TIMESPLIT
     FLATTEN
+    
+    0 GET 1 ->LIST
     
     <%
         DROP
@@ -51,7 +51,7 @@ DEPTH ->LIST
         
         // Get substraction result mean and sigma values
         0 GET 'subSeries' STORE 
-        $subSeries
+        $subSeries 
         true
         MUSIGMA
         
@@ -59,21 +59,29 @@ DEPTH ->LIST
         'mean' STORE
         
         // Keep only point below a specific threshold: -1* (|mean| + sigma) 
-        [ $subSeries $mean ABS $sigma + -1 * mapper.le 0 0 0 ] MAP
+        [ $subSeries $mean ABS $sigma + -1 * mapper.le 0 0 0 ] MAP 
         
         // Separate result series per quiesce periods of 4 h
-        4 h
-        3
+        3 h
+        5
         'split'
         TIMESPLIT
-        FLATTEN
+        FLATTEN NONEMPTY
+        
+        // counting datapoints in spikes. 
+        MARK SWAP
+        <%
+            DUP VALUES SIZE <% 20 >=  %> <% DROP %> IFT
+        %> FOREACH
+        
+        COUNTTOMARK ->LIST SWAP DROP 
         
         // Then create a list of tick to start and end
         <%
             DROP 
             UNBUCKETIZE
             'series' STORE
-            [ $series FIRSTTICK 1 h - $series LASTTICK 1 h + ]
+            [ $series FIRSTTICK 1.5 h - $series LASTTICK 1.5 h + ]
         %>
         LMAP
         
@@ -84,17 +92,7 @@ DEPTH ->LIST
         $clips
         CLIP
         $getName '.transit' + RENAME
-        
-        // validate transit with DTW
-        MARK SWAP 
-        <%
-            'transit' STORE
-            $transit $exoplanet.model 0.0 DTW
-            <% 8.0 > %> <% CONTINUE %> IFT
-            $transit 
-        %> FOREACH
-        
-        COUNTTOMARK ->LIST SWAP DROP FLATTEN
+
         
         // Add initial series to result list
         $myGTS $getName RENAME
