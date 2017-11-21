@@ -1,0 +1,70 @@
+'READ_TOKEN'
+'token' STORE
+
+[ 
+	$token 								// Application authentication
+	'kepler.sap.flux' 					// selector for classname
+    { 'id' '006541920' }            	// Selector for labels
+	'2009-05-02T00:56:10.000000Z' 		// Start date
+	'2013-05-11T12:02:06.000000Z' 		// End date
+] FETCH
+
+// Get Singleton series
+0 GET
+
+// Quiesce period
+6 h 
+
+// Minimal numbers of points per series 
+100 
+
+// GTS split label
+'observation' 
+
+TIMESPLIT
+
+'gts' STORE
+
+[
+
+    $gts                                // Series list or Singleton
+    []                                  // Labels to compute equivalence class
+    { 'observation' '~[2-5]' }          // Labels map for selector
+    filter.bylabels                     // Filter function operator 
+]
+FILTER
+
+[
+    SWAP                                // Series list or Singleton
+    bucketizer.min                      // Bucketize function operator
+    0                                   // Lastbucket 				
+    2 h                                 // Bucketspan
+    0                                   // Bucketcount
+]
+BUCKETIZE
+
+'bucketizedSeries' STORE
+
+[
+    // Compute moving mean 
+    [
+        $bucketizedSeries
+        mapper.mean
+        5
+        5
+        0
+    ]
+    MAP                                 // Series list or Singleton 0
+    $bucketizedSeries                   // Series list or Singleton 1
+
+    [ 'observation' ]                   // Labels to compute equivalence class
+    op.sub                              // Apply function operator
+]
+APPLY
+
+// Mergeb bucketize series with previous result
+$bucketizedSeries
+APPEND
+
+// Standardize the series to compare both results
+STANDARDIZE
