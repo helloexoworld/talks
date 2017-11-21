@@ -150,7 +150,6 @@ This WarpScript operation split (singleton or list of) time series according to 
 
 TIMESPLIT
 ```
-The generated series starts all on 1 January 1970.
 
 ### The Filter framework
 
