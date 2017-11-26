@@ -13,3 +13,15 @@ The main repo used for my side-project to find exoplanets using Warp10 and Tenso
 # Blogpost
 
 * [Introducing HelloExoWorld: The quest to discover exoplanets with Warp10 and Tensorflow](https://medium.com/helloexoworld/introducing-helloexoworld-the-quest-to-discover-exoplanets-with-warp10-and-tensorflow-e50f6e669915)
+
+# Contributions
+
+* PyKE
+  * [PR#69](https://github.com/KeplerGO/PyKE/pull/69)
+  * [PR#76](https://github.com/KeplerGO/PyKE/pull/76)
+
+# Other repos
+
+* [kepler-lens](https://github.com/PierreZ/kepler-lens), A python utility to load and update Kepler/K2 data to Warp10
+* [kepler-lens-ansible](https://github.com/PierreZ/kepler2warp10-ansible), the ansible role to deploy kepler-lens
+* [kepler2Warp10](https://github.com/PierreZ/kepler2warp10), Small Kepler data parser in Go for Warp10 input format
