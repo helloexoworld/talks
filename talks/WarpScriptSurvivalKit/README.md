@@ -171,6 +171,9 @@ WarpScript includes 5 frameworks, the first one we talk a bit about is the filte
 	'2013-05-11T12:02:06.000000Z' 		// End date
 ] FETCH
 
+// Get Singleton series
+0 GET
+
 // Quiesce period
 6 h 
 
@@ -212,6 +215,9 @@ WarpScript includes 5 frameworks, the second one we talk a bit about is the Buck
 	'2009-05-02T00:56:10.000000Z' 		// Start date
 	'2013-05-11T12:02:06.000000Z' 		// End date
 ] FETCH
+
+// Get Singleton series
+0 GET
 
 // Quiesce period
 6 h 
@@ -261,6 +267,9 @@ The third framework allows the user to apply operation on each series values fro
 	'2009-05-02T00:56:10.000000Z' 		// Start date
 	'2013-05-11T12:02:06.000000Z' 		// End date
 ] FETCH
+
+// Get Singleton series
+0 GET
 
 // Quiesce period
 6 h 
@@ -319,6 +328,9 @@ The last framework seen during this presentation is the Apply one. It computes o
 	'2009-05-02T00:56:10.000000Z' 		// Start date
 	'2013-05-11T12:02:06.000000Z' 		// End date
 ] FETCH
+
+// Get Singleton series
+0 GET
 
 // Quiesce period
 6 h 
@@ -387,6 +399,9 @@ Then as the value are very different, the final set is standardized, and both re
 	'2009-05-02T00:56:10.000000Z' 		// Start date
 	'2013-05-11T12:02:06.000000Z' 		// End date
 ] FETCH
+
+// Get Singleton series
+0 GET
 
 // Quiesce period
 6 h 
