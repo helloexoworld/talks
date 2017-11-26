@@ -351,6 +351,8 @@ FILTER
 ]
 BUCKETIZE
 
+'bucketizedSeries' STORE
+
 [
     // Compute moving mean 
     [
@@ -416,6 +418,8 @@ FILTER
     0                                   // Bucketcount
 ]
 BUCKETIZE
+
+'bucketizedSeries' STORE
 
 [
     // Compute moving mean 
