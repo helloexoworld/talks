@@ -8,7 +8,7 @@ The main repo used for my side-project to find exoplanets using Warp10 and Tenso
 
 # Talks
 
-* [Surival kit, Start a Time Series analysis using Warp 10](https://github.com/PierreZ/exoplanet-analysis/tree/master/talks/WarpScriptSurvivalKit) (Warp10 Meetup Nov 2017)
+* [Survival kit, Start a Time Series analysis using Warp 10](https://github.com/PierreZ/exoplanet-analysis/tree/master/talks/WarpScriptSurvivalKit) (Warp10 Meetup Nov 2017)
 
 # Blogpost
 
