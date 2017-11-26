@@ -1,3 +1,7 @@
+# Surival kit, Start a Time Series analysis using Warp 10
+
+The slides can be found [here](https://docs.google.com/presentation/d/1WhXAMQ4teoAgs8UTfSh21-d0aYJD3r2hYwDrUJFgJNY/edit?usp=sharing).
+
 ## First install Warp 10 
 
 http://www.warp10.io/getting-started/
